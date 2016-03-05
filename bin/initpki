@@ -1,0 +1,7 @@
+#!/bin/sh
+
+easyrsa init-pki
+easyrsa build-ca
+easyrsa gen-dh
+openvpn --genkey --secret $OPENVPN/pki/ta.key
+easyrsa build-server-full server nopass

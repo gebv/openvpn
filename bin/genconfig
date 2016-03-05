@@ -1,0 +1,94 @@
+#!/bin/sh
+
+set -e
+
+[ -d /dev/net ] ||
+    mkdir -p /dev/net
+[ -c /dev/net/tun ] ||
+    mknod /dev/net/tun c 10 200
+
+cd /etc/openvpn
+
+touch placeholder
+
+[ -f server1194.conf ] || cat >server1194.conf <<EOF
+port 1194
+server 192.168.50.0 255.255.255.0
+proto udp
+dev tun
+
+key $EASYRSA_PKI/private/server.key
+ca $EASYRSA_PKI/ca.crt
+cert $EASYRSA_PKI/issued/server.crt
+dh $EASYRSA_PKI/dh.pem
+
+tls-server
+
+tls-auth $EASYRSA_PKI/ta.key
+
+link-mtu 1560
+
+key-direction 0
+cipher AES-128-CBC
+
+#push "redirect-gateway def1 bypass-dhcp"
+push "dhcp-option DNS 8.8.8.8"
+push "dhcp-option DNS 8.8.8.4"
+push "route 192.168.50.0 255.255.255.0"
+
+keepalive 10 120
+
+comp-lzo
+max-clients 100
+user nobody
+group nogroup
+persist-key
+persist-tun
+
+verb 4
+
+status server1194-status.log
+
+EOF
+
+[ -f server943.conf ] || cat >server943.conf <<EOF
+port 943
+server 192.168.50.0 255.255.255.0
+proto tcp
+dev tun
+
+key $EASYRSA_PKI/private/server.key
+ca $EASYRSA_PKI/ca.crt
+cert $EASYRSA_PKI/issued/server.crt
+dh $EASYRSA_PKI/dh.pem
+
+tls-server
+
+tls-auth $EASYRSA_PKI/ta.key
+
+link-mtu 1560
+
+key-direction 0
+cipher AES-128-CBC
+
+#push "redirect-gateway def1 bypass-dhcp"
+push "dhcp-option DNS 8.8.8.8"
+push "dhcp-option DNS 8.8.8.4"
+push "route 192.168.50.0 255.255.255.0"
+
+keepalive 10 120
+
+comp-lzo
+max-clients 100
+user nobody
+group nogroup
+persist-key
+persist-tun
+
+verb 3
+reneg-sec 3600
+duplicate-cn
+
+status server943-status.log
+
+EOF

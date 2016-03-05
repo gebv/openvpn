@@ -1,0 +1,78 @@
+#!/bin/bash
+
+set -e
+
+cn="$1"
+parm="$2"
+
+if [ ! -f "$EASYRSA_PKI/private/${cn}.key" ]; then
+    echo "Unable to find \"${cn}\", please try again or generate the key first" >&2
+    exit 1
+fi
+
+MY_IP_ADDR=$(curl -s http://myip.enix.org/REMOTE_ADDR)
+[ "$MY_IP_ADDR" ] || {
+    echo "Sorry, I could not figure out my public IP address."
+    echo "(I use http://myip.enix.org/REMOTE_ADDR/ for that purpose.)"
+    exit 1
+}
+
+get_client_config() {
+	echo "
+client
+nobind
+tls-client
+
+dev tun
+remote $MY_IP_ADDR 1194 udp
+remote $MY_IP_ADDR 943 tcp
+remote $MY_IP_ADDR 1194 udp
+remote $MY_IP_ADDR 1194 udp
+remote $MY_IP_ADDR 1194 udp
+
+resolv-retry infinite
+redirect-gateway
+pull
+cipher AES-128-CBC
+
+persist-tun
+persist-key
+
+comp-lzo
+verb 3
+
+#link-mtu 1560
+
+# remote-cert-tls server
+# ns-cert-type server
+
+<ca>
+$(cat $EASYRSA_PKI/ca.crt)
+
+</ca>
+
+<cert>
+$(openssl x509 -in $EASYRSA_PKI/issued/${cn}.crt)
+
+</cert>
+
+<key>
+$(cat $EASYRSA_PKI/private/${cn}_rsa.key)
+
+</key>
+
+<tls-auth>
+$(cat $EASYRSA_PKI/ta.key)
+</tls-auth>
+key-direction 1
+"
+}
+
+case "$parm" in
+	"" | "combined")
+		get_client_config
+		;;
+	*)
+        	echo "This script can produce the client configuration" >&2
+        	;;
+esac
